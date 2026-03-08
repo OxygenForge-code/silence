@@ -4,22 +4,28 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SESSİZLİK - Ses Kontrollü Korku</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+    <script>
+        // MOBİL DEDEKTÖR - Sayfa yüklenmeden yönlendir
+        const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
+            || (window.matchMedia && window.matchMedia("(max-width: 768px)").matches)
+            || ('ontouchstart' in window && navigator.maxTouchPoints > 0);
+        
+        if (isMobile && !window.location.href.includes('mobile.html')) {
+            window.location.href = 'mobile.html';
         }
-
+    </script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
         body {
             background: #000;
             overflow: hidden;
             font-family: 'Courier New', monospace;
             color: #fff;
-            cursor: none; /* Gerçek FPS hissi */
+            cursor: none;
         }
 
-        /* === 3D MOTOR - DÜZELTİLMİŞ === */
+        /* === 3D MOTOR === */
         #world {
             position: fixed;
             inset: 0;
@@ -34,10 +40,10 @@
             left: 50%;
             top: 50%;
             transform-style: preserve-3d;
-            transition: transform 0.05s linear; /* Daha hızlı, daha duyarlı */
+            transition: transform 0.05s linear;
         }
 
-        /* === ODA - MERKEZDE VE DOĞRU BOYUTLARDA === */
+        /* === ODA === */
         .room {
             position: absolute;
             width: 2000px;
@@ -47,119 +53,112 @@
             transform-style: preserve-3d;
         }
 
-        /* Yüzeylerin ortak özellikleri */
         .face {
             position: absolute;
             backface-visibility: hidden;
             box-shadow: inset 0 0 100px rgba(0,0,0,0.9);
         }
 
-        /* ZEMİN - Ayakların altında */
         .floor {
             width: 2000px;
             height: 2000px;
             background: 
-                repeating-linear-gradient(0deg, 
-                    #1a1a1a 0px, #1a1a1a 100px, 
-                    #151515 100px, #151515 200px),
-                repeating-linear-gradient(90deg, 
-                    transparent 0px, transparent 100px,
-                    rgba(0,0,0,0.3) 100px, rgba(0,0,0,0.3) 102px);
+                repeating-linear-gradient(0deg, #1a1a1a 0px, #1a1a1a 100px, #151515 100px, #151515 200px),
+                repeating-linear-gradient(90deg, transparent 0px, transparent 100px, rgba(0,0,0,0.3) 100px, rgba(0,0,0,0.3) 102px);
             transform: rotateX(90deg) translateZ(-500px);
             transform-origin: center;
         }
 
-        /* TAVAN - Başın üstünde */
         .ceiling {
             width: 2000px;
             height: 2000px;
             background: 
                 radial-gradient(circle at 50% 50%, #1a1a1a 0%, #050505 100%),
-                repeating-linear-gradient(90deg, 
-                    #0f0f0f 0px, #0f0f0f 50px, 
-                    #0a0a0a 50px, #0a0a0a 100px);
+                repeating-linear-gradient(90deg, #0f0f0f 0px, #0f0f0f 50px, #0a0a0a 50px, #0a0a0a 100px);
             transform: rotateX(-90deg) translateZ(-500px);
             transform-origin: center;
         }
 
-        /* ÖN DUVAR - Karşıda */
         .wall-front {
             width: 2000px;
             height: 1000px;
             background: 
                 linear-gradient(180deg, #0a0a0a 0%, #151515 50%, #0a0a0a 100%),
-                repeating-linear-gradient(90deg, 
-                    transparent 0px, transparent 198px,
-                    rgba(0,0,0,0.5) 198px, rgba(0,0,0,0.5) 200px);
+                repeating-linear-gradient(90deg, transparent 0px, transparent 198px, rgba(0,0,0,0.5) 198px, rgba(0,0,0,0.5) 200px);
             transform: translateZ(-1000px);
         }
 
-        /* ARKA DUVAR - Arkanda */
         .wall-back {
             width: 2000px;
             height: 1000px;
-            background: 
-                linear-gradient(180deg, #050505 0%, #101010 50%, #050505 100%);
+            background: linear-gradient(180deg, #050505 0%, #101010 50%, #050505 100%);
             transform: rotateY(180deg) translateZ(-1000px);
         }
 
-        /* SOL DUVAR */
         .wall-left {
             width: 2000px;
             height: 1000px;
             left: -1000px;
             background: 
                 linear-gradient(90deg, #000 0%, #151515 50%, #000 100%),
-                repeating-linear-gradient(0deg,
-                    transparent 0px, transparent 198px,
-                    rgba(0,0,0,0.5) 198px, rgba(0,0,0,0.5) 200px);
+                repeating-linear-gradient(0deg, transparent 0px, transparent 198px, rgba(0,0,0,0.5) 198px, rgba(0,0,0,0.5) 200px);
             transform: rotateY(90deg) translateZ(-1000px);
         }
 
-        /* SAĞ DUVAR */
         .wall-right {
             width: 2000px;
             height: 1000px;
             right: -1000px;
             background: 
                 linear-gradient(-90deg, #000 0%, #151515 50%, #000 100%),
-                repeating-linear-gradient(0deg,
-                    transparent 0px, transparent 198px,
-                    rgba(0,0,0,0.5) 198px, rgba(0,0,0,0.5) 200px);
+                repeating-linear-gradient(0deg, transparent 0px, transparent 198px, rgba(0,0,0,0.5) 198px, rgba(0,0,0,0.5) 200px);
             transform: rotateY(-90deg) translateZ(-1000px);
         }
 
-        /* === KAPI ARALIKLARI === */
+        /* === DETAYLAR === */
+        .window {
+            position: absolute;
+            width: 300px;
+            height: 400px;
+            left: 50%;
+            top: 100px;
+            transform: translateX(-50%) translateZ(-995px);
+            background: linear-gradient(180deg, #000510 0%, #001020 50%, #000510 100%);
+            border: 10px solid #1a1a1a;
+            box-shadow: inset 0 0 50px rgba(0,0,0,0.9);
+            overflow: hidden;
+        }
+
+        .window::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: repeating-linear-gradient(45deg, transparent 0px, transparent 20px, rgba(255,255,255,0.02) 20px, rgba(255,255,255,0.02) 22px);
+            animation: rain 8s linear infinite;
+        }
+
+        @keyframes rain {
+            0% { transform: translateY(-100%); }
+            100% { transform: translateY(100%); }
+        }
+
         .door {
             position: absolute;
             width: 200px;
             height: 400px;
             background: #000;
             border: 3px solid #1a1a1a;
-            box-shadow: 
-                0 0 50px rgba(0,0,0,0.9),
-                inset 0 0 30px rgba(50,0,0,0.3);
+            box-shadow: 0 0 50px rgba(0,0,0,0.9), inset 0 0 30px rgba(50,0,0,0.3);
         }
 
-        .door-left {
-            left: 300px;
-            top: 300px;
-            transform: translateZ(-995px);
-        }
+        .door-left { left: 300px; top: 300px; transform: translateZ(-995px); }
+        .door-right { right: 300px; top: 300px; transform: translateZ(-995px); }
 
-        .door-right {
-            right: 300px;
-            top: 300px;
-            transform: translateZ(-995px);
-        }
-
-        /* === MOBİLYA/EŞYALAR === */
         .furniture {
             position: absolute;
             transform-style: preserve-3d;
         }
 
-        /* Masalar */
         .table {
             width: 200px;
             height: 100px;
@@ -189,7 +188,6 @@
         .leg-3 { transform: translate3d(20px, 50px, -80px); }
         .leg-4 { transform: translate3d(160px, 50px, -80px); }
 
-        /* Devrilmiş sandalye */
         .chair {
             width: 100px;
             height: 100px;
@@ -214,37 +212,6 @@
             transform: translateZ(-50px);
         }
 
-        /* Pencere */
-        .window {
-            position: absolute;
-            width: 300px;
-            height: 400px;
-            left: 50%;
-            top: 100px;
-            transform: translateX(-50%) translateZ(-1000px);
-            background: 
-                linear-gradient(180deg, #000510 0%, #001020 50%, #000510 100%);
-            border: 10px solid #1a1a1a;
-            box-shadow: inset 0 0 50px rgba(0,0,0,0.9);
-            overflow: hidden;
-        }
-
-        .window::after {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: 
-                repeating-linear-gradient(45deg, transparent 0px, transparent 20px, rgba(255,255,255,0.02) 20px, rgba(255,255,255,0.02) 22px),
-                repeating-linear-gradient(-45deg, transparent 0px, transparent 40px, rgba(255,255,255,0.01) 40px, rgba(255,255,255,0.01) 42px);
-            animation: rain 8s linear infinite;
-        }
-
-        @keyframes rain {
-            0% { transform: translateY(-100%); }
-            100% { transform: translateY(100%); }
-        }
-
-        /* Kan lekeleri */
         .blood {
             position: absolute;
             width: 150px;
@@ -256,57 +223,7 @@
             opacity: 0.6;
         }
 
-        .blood-1 {
-            left: 200px;
-            top: 600px;
-            transform: translateZ(-999px) rotateX(-90deg);
-        }
-
-        /* === EL FENERİ - DÜZELTİLMİŞ === */
-        #flashlight {
-            position: fixed;
-            width: 400px;
-            height: 400px;
-            border-radius: 50%;
-            pointer-events: none;
-            z-index: 1000;
-            mix-blend-mode: soft-light; /* Daha iyi görünürlük */
-            background: radial-gradient(circle at 30% 30%,
-                rgba(255, 255, 240, 1) 0%,
-                rgba(255, 255, 200, 0.8) 10%,
-                rgba(255, 240, 150, 0.4) 30%,
-                rgba(255, 200, 100, 0.1) 50%,
-                transparent 70%);
-            transform: translate(-50%, -50%);
-            filter: blur(8px);
-        }
-
-        /* Fenerin dış halkası (daha keskin merkez) */
-        #flashlight::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            border-radius: 50%;
-            background: radial-gradient(circle at 30% 30%,
-                rgba(255, 255, 255, 0.9) 0%,
-                rgba(255, 255, 200, 0.5) 20%,
-                transparent 60%);
-            filter: blur(2px);
-        }
-
-        /* Karanlık overlay - Fener olmayan yerler */
-        #darkness-overlay {
-            position: fixed;
-            inset: 0;
-            background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-                transparent 0%,
-                transparent 100px,
-                rgba(0, 0, 0, 0.4) 200px,
-                rgba(0, 0, 0, 0.85) 400px,
-                rgba(0, 0, 0, 0.98) 600px);
-            pointer-events: none;
-            z-index: 999;
-        }
+        .blood-1 { left: 200px; top: 600px; transform: translateZ(-999px) rotateX(-90deg); }
 
         /* === YARATIK === */
         #monster {
@@ -357,11 +274,54 @@
             50% { opacity: 1; height: 12px; }
         }
 
-        /* Mesafe durumları */
         #monster.far { transform: translateZ(-1500px) scale(0.4); opacity: 0.2; filter: blur(10px); }
         #monster.medium { transform: translateZ(-800px) scale(0.8); opacity: 0.6; filter: blur(4px); }
         #monster.close { transform: translateZ(-400px) scale(1.2); opacity: 0.9; filter: blur(1px); }
         #monster.attacking { transform: translateZ(-100px) scale(2); opacity: 1; filter: blur(0); }
+
+        /* === EL FENERİ === */
+        #flashlight {
+            position: fixed;
+            width: 400px;
+            height: 400px;
+            border-radius: 50%;
+            pointer-events: none;
+            z-index: 1000;
+            mix-blend-mode: soft-light;
+            background: radial-gradient(circle at 30% 30%,
+                rgba(255, 255, 240, 1) 0%,
+                rgba(255, 255, 200, 0.8) 10%,
+                rgba(255, 240, 150, 0.4) 30%,
+                rgba(255, 200, 100, 0.1) 50%,
+                transparent 70%);
+            transform: translate(-50%, -50%);
+            filter: blur(8px);
+        }
+
+        #flashlight::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: radial-gradient(circle at 30% 30%,
+                rgba(255, 255, 255, 0.9) 0%,
+                rgba(255, 255, 200, 0.5) 20%,
+                transparent 60%);
+            filter: blur(2px);
+        }
+
+        #darkness-overlay {
+            position: fixed;
+            inset: 0;
+            background: radial-gradient(circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+                transparent 0%,
+                transparent 100px,
+                rgba(0, 0, 0, 0.4) 200px,
+                rgba(0, 0, 0, 0.85) 400px,
+                rgba(0, 0, 0, 0.98) 600px);
+            pointer-events: none;
+            z-index: 999;
+        }
 
         /* === UI === */
         #ui {
@@ -416,9 +376,7 @@
             50% { transform: scale(1.3); }
         }
 
-        #sound-display {
-            text-align: right;
-        }
+        #sound-display { text-align: right; }
 
         #sound-bar {
             width: 250px;
@@ -556,7 +514,6 @@
     </style>
 </head>
 <body>
-    <!-- START SCREEN -->
     <div id="start-screen">
         <h1>SESSİZLİK</h1>
         <p style="color: #333; letter-spacing: 10px;">SESİN SENİN DÜŞMANIN</p>
@@ -571,18 +528,15 @@
         </div>
     </div>
 
-    <!-- JUMPSCARE -->
     <div id="jumpscare">
         <div id="scare-face"></div>
         <div style="margin-top: -100px; font-size: 60px; color: #ff0000; letter-spacing: 20px; z-index: 1;">ÖLDÜN</div>
         <button onclick="location.reload()" style="margin-top: 50px; padding: 20px 50px; font-size: 20px; background: #ff0000; border: none; color: #fff; cursor: pointer; z-index: 1; font-family: inherit;">TEKRAR DENE</button>
     </div>
 
-    <!-- OYUN DÜNYASI -->
     <div id="world" style="display: none;">
         <div id="camera">
             <div class="room">
-                <!-- Yapı -->
                 <div class="face floor"></div>
                 <div class="face ceiling"></div>
                 <div class="face wall-front">
@@ -596,7 +550,6 @@
                     <div class="door door-right"></div>
                 </div>
 
-                <!-- Mobilya -->
                 <div class="furniture table">
                     <div class="table-top"></div>
                     <div class="table-leg leg-1"></div>
@@ -612,7 +565,6 @@
 
                 <div class="blood blood-1"></div>
 
-                <!-- Yaratık -->
                 <div id="monster">
                     <div class="monster-mesh">
                         <div class="monster-eyes">
@@ -625,13 +577,11 @@
         </div>
     </div>
 
-    <!-- EFEKTLER -->
     <div id="flashlight" style="display: none;"></div>
     <div id="darkness-overlay" style="display: none;"></div>
     <div id="vignette" style="display: none;"></div>
     <div id="noise-overlay" style="display: none;"></div>
 
-    <!-- UI -->
     <div id="ui" style="display: none;">
         <div id="crosshair"></div>
         <div id="hud-panel">
@@ -646,34 +596,26 @@
     </div>
 
     <script>
-        // === OYUN MOTORU ===
         const Game = {
             state: {
                 isPlaying: false,
                 isAlive: true,
-                monsterDist: 2000,      // Başlangıç mesafesi
-                awareness: 0,           // Yaratık farkındalığı
-                camera: { x: 0, y: 0 }, // Mouse pozisyonu (-1 ile 1)
-                pos: { z: 0 },          // Oyuncu Z pozisyonu (ileri/geri)
+                monsterDist: 2000,
+                awareness: 0,
+                camera: { x: 0, y: 0 },
+                pos: { z: 0 },
                 keys: {},
                 heartRate: 60,
                 soundAvg: 0
             },
-            
             config: {
                 mouseSensitivity: 0.8,
                 moveSpeed: 100,
                 fov: 800
             },
-
-            audio: {
-                ctx: null,
-                analyser: null,
-                data: null
-            }
+            audio: { ctx: null, analyser: null, data: null }
         };
 
-        // === SES SİSTEMİ ===
         async function initAudio() {
             try {
                 Game.audio.ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -687,13 +629,11 @@
                 
                 const source = Game.audio.ctx.createMediaStreamSource(stream);
                 Game.audio.analyser = Game.audio.ctx.createAnalyser();
-                Game.audio.analyser.fftSize = 4096; // Daha hassas
+                Game.audio.analyser.fftSize = 4096;
                 Game.audio.analyser.smoothingTimeConstant = 0.85;
                 
                 source.connect(Game.audio.analyser);
                 Game.audio.data = new Uint8Array(Game.audio.analyser.frequencyBinCount);
-                
-                console.log('🎤 Ses sistemi aktif');
             } catch (e) {
                 alert('Mikrofon gerekli! ' + e.message);
             }
@@ -701,35 +641,27 @@
 
         function getSoundLevel() {
             if (!Game.audio.analyser) return 0;
-            
             Game.audio.analyser.getByteFrequencyData(Game.audio.data);
             
-            // Ağırlıklı ortalama (düşük frekanslar daha önemli - ses/inşaat)
             let sum = 0;
             let weightSum = 0;
-            
             for (let i = 0; i < Game.audio.data.length; i++) {
-                const weight = 1 / (1 + i * 0.01); // Düşük frekanslara ağırlık
+                const weight = 1 / (1 + i * 0.01);
                 sum += Game.audio.data[i] * weight;
                 weightSum += weight;
             }
-            
             const avg = sum / weightSum;
-            return Math.min(100, (avg / 255) * 150); // Normalize
+            return Math.min(100, (avg / 255) * 150);
         }
 
-        // === OYUN DÖNGÜSÜ ===
         function gameLoop() {
             if (!Game.state.isPlaying || !Game.state.isAlive) return;
-
-            // Ses analizi
             const rawLevel = getSoundLevel();
-            Game.state.soundAvg = Game.state.soundAvg * 0.9 + rawLevel * 0.1; // Smooth
+            Game.state.soundAvg = Game.state.soundAvg * 0.9 + rawLevel * 0.1;
             
             updateMonster(Game.state.soundAvg);
             updateUI(Game.state.soundAvg);
             updateMovement();
-            
             requestAnimationFrame(gameLoop);
         }
 
@@ -737,56 +669,38 @@
             let speed = 0;
             let detect = 0;
 
-            // Ses seviyelerine göre davranış
-            if (sound < 5) {
-                speed = -1; detect = -0.3; // Sessizlik = uzaklaş
-            } else if (sound < 15) {
-                speed = 0.5; detect = 0.1; // Fısıltı = yavaş yaklaş
-            } else if (sound < 35) {
-                speed = 3; detect = 0.5;   // Normal = yaklaş
-            } else if (sound < 60) {
-                speed = 8; detect = 2;     // Yüksek = hızlı
-            } else {
-                speed = 20; detect = 5;    // Çığlık = koş
-            }
+            if (sound < 5) { speed = -1; detect = -0.3; }
+            else if (sound < 15) { speed = 0.5; detect = 0.1; }
+            else if (sound < 35) { speed = 3; detect = 0.5; }
+            else if (sound < 60) { speed = 8; detect = 2; }
+            else { speed = 20; detect = 5; }
 
-            // Farkındalık mekaniği
             Game.state.awareness += detect;
             Game.state.awareness = Math.max(0, Math.min(100, Game.state.awareness));
 
             if (Game.state.awareness > 15) {
                 Game.state.monsterDist -= speed;
             } else {
-                Game.state.monsterDist += (Math.random() - 0.3); // Rastgele gezin
+                Game.state.monsterDist += (Math.random() - 0.3);
             }
 
-            // Sınırlar
             Game.state.monsterDist = Math.max(50, Math.min(3000, Game.state.monsterDist));
 
-            // Görsel güncelleme
             const m = document.getElementById('monster');
             m.className = '';
-            
             if (Game.state.monsterDist > 1200) m.classList.add('far');
             else if (Game.state.monsterDist > 600) m.classList.add('medium');
             else if (Game.state.monsterDist > 200) m.classList.add('close');
             else m.classList.add('attacking');
 
-            // Ölüm kontrolü
-            if (Game.state.monsterDist <= 150 && sound > 3) {
-                death();
-            }
+            if (Game.state.monsterDist <= 150 && sound > 3) death();
 
-            // Kalp atışı
             const danger = Math.max(0, (1000 - Game.state.monsterDist) / 1000);
             Game.state.heartRate = 60 + Math.floor(danger * 120);
         }
 
         function updateUI(sound) {
-            // Ses barı
             document.getElementById('sound-fill').style.width = sound + '%';
-            
-            // Ses etiketi
             const labels = ['SESSIZ', 'FISILTI', 'NORMAL', 'YUKSEK', 'CIGLIK!'];
             const thresholds = [5, 15, 35, 60, 100];
             let label = labels[0];
@@ -797,44 +711,26 @@
             document.getElementById('sound-text').style.color = 
                 sound > 60 ? '#ff0000' : sound > 35 ? '#ffaa00' : '#666';
 
-            // Kalp atışı
             const hm = document.getElementById('heart-monitor');
             document.getElementById('bpm').textContent = Game.state.heartRate;
-            
             if (Game.state.monsterDist < 800) hm.classList.add('danger');
             else hm.classList.remove('danger');
         }
 
         function updateMovement() {
-            // WASD hareketi
-            if (Game.state.keys['w'] || Game.state.keys['W']) {
-                Game.state.pos.z -= Game.config.moveSpeed;
-            }
-            if (Game.state.keys['s'] || Game.state.keys['S']) {
-                Game.state.pos.z += Game.config.moveSpeed;
-            }
-            
-            // Z sınırları (-1500 ile 500 arası)
+            if (Game.state.keys['w'] || Game.state.keys['W']) Game.state.pos.z -= Game.config.moveSpeed;
+            if (Game.state.keys['s'] || Game.state.keys['S']) Game.state.pos.z += Game.config.moveSpeed;
             Game.state.pos.z = Math.max(-1500, Math.min(500, Game.state.pos.z));
             
-            // Kamera uygula
             const cam = document.getElementById('camera');
-            const rotX = -Game.state.camera.y * 45; // Yukarı/aşağı bak
-            const rotY = Game.state.camera.x * 60;  // Sağa/sola bak
-            
-            cam.style.transform = `
-                translateZ(${Game.config.fov}px) 
-                rotateX(${rotX}deg) 
-                rotateY(${rotY}deg)
-                translateZ(${Game.state.pos.z}px)
-            `;
+            const rotX = -Game.state.camera.y * 45;
+            const rotY = Game.state.camera.x * 60;
+            cam.style.transform = `translateZ(${Game.config.fov}px) rotateX(${rotX}deg) rotateY(${rotY}deg) translateZ(${Game.state.pos.z}px)`;
         }
 
         function death() {
             Game.state.isAlive = false;
             document.getElementById('jumpscare').classList.add('active');
-            
-            // Ses efekti (opsiyonel)
             try {
                 const osc = Game.audio.ctx.createOscillator();
                 const gain = Game.audio.ctx.createGain();
@@ -849,39 +745,24 @@
             } catch(e) {}
         }
 
-        // === EVENTLER ===
         document.addEventListener('mousemove', (e) => {
             if (!Game.state.isPlaying) return;
-            
-            // Normalize (-1 ile 1)
             Game.state.camera.x = (e.clientX / window.innerWidth - 0.5) * 2;
             Game.state.camera.y = (e.clientY / window.innerHeight - 0.5) * 2;
             
-            // Fener pozisyonu
             const fl = document.getElementById('flashlight');
             const dark = document.getElementById('darkness-overlay');
-            
             fl.style.left = e.clientX + 'px';
             fl.style.top = e.clientY + 'px';
-            
-            // Karanlık overlay merkezi güncelle
             dark.style.setProperty('--mouse-x', e.clientX + 'px');
             dark.style.setProperty('--mouse-y', e.clientY + 'px');
         });
 
-        document.addEventListener('keydown', (e) => {
-            Game.state.keys[e.key] = true;
-        });
+        document.addEventListener('keydown', (e) => Game.state.keys[e.key] = true);
+        document.addEventListener('keyup', (e) => Game.state.keys[e.key] = false);
 
-        document.addEventListener('keyup', (e) => {
-            Game.state.keys[e.key] = false;
-        });
-
-        // Başlat
         document.getElementById('start-btn').addEventListener('click', async () => {
             await initAudio();
-            
-            // UI geçişi
             document.getElementById('start-screen').style.opacity = '0';
             setTimeout(() => {
                 document.getElementById('start-screen').style.display = 'none';
@@ -891,7 +772,6 @@
                 document.getElementById('vignette').style.display = 'block';
                 document.getElementById('noise-overlay').style.display = 'block';
                 document.getElementById('ui').style.display = 'block';
-                
                 Game.state.isPlaying = true;
                 gameLoop();
             }, 1000);
