@@ -3,656 +3,718 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>YANKI: KARANLIK ODA</title>
+    <title>Sessizlik | Ses-Kontrollü Korku</title>
     <style>
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            user-select: none;
         }
+
         body {
             background: #000;
-            min-height: 100vh;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            overflow: hidden;
             font-family: 'Courier New', monospace;
-            overflow: hidden;
+            color: #fff;
+            user-select: none;
         }
-        #game-container {
-            width: 1200px;
-            height: 800px;
-            background: #050505;
-            border: 6px solid #1a1a1a;
-            box-shadow: 0 0 50px #ff000030, inset 0 0 30px #000;
+
+        /* === 3D SAHNE MOTORU === */
+        #viewport {
+            width: 100vw;
+            height: 100vh;
+            perspective: 1000px;
+            overflow: hidden;
             position: relative;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            border-radius: 8px;
         }
-        /* Gelişmiş CRT efekti */
-        .crt::before {
-            content: " ";
-            display: block;
-            position: absolute;
-            top: 0;
-            left: 0;
+
+        #camera {
             width: 100%;
             height: 100%;
-            background: linear-gradient(rgba(0,255,0,0.03) 50%, rgba(0,0,0,0.1) 50%);
-            background-size: 100% 4px;
-            pointer-events: none;
-            z-index: 15;
-            opacity: 0.2;
-            animation: scanline 8s linear infinite;
+            transform-style: preserve-3d;
+            transition: transform 0.1s cubic-bezier(0.25, 0.46, 0.45, 0.94);
         }
-        @keyframes scanline {
-            0% { transform: translateY(0); }
-            100% { transform: translateY(100%); }
+
+        /* === ODA GEOMETRİSİ === */
+        .room {
+            position: absolute;
+            width: 4000px;
+            height: 2000px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) translateZ(-2000px);
+            transform-style: preserve-3d;
         }
-        #game-screen {
-            flex: 1;
+
+        /* Tavan */
+        .ceiling {
+            position: absolute;
+            width: 4000px;
+            height: 4000px;
+            background: 
+                linear-gradient(90deg, rgba(20,20,20,1) 0%, rgba(10,10,10,1) 50%, rgba(20,20,20,1) 100%),
+                repeating-linear-gradient(0deg, transparent 0px, transparent 100px, rgba(0,0,0,0.3) 100px, rgba(0,0,0,0.3) 102px);
+            transform: rotateX(90deg) translateZ(-1000px);
+            transform-origin: center;
+        }
+
+        /* Zemin */
+        .floor {
+            position: absolute;
+            width: 4000px;
+            height: 4000px;
+            background: 
+                repeating-linear-gradient(90deg, #1a1a1a 0px, #1a1a1a 100px, #151515 100px, #151515 200px),
+                repeating-linear-gradient(0deg, transparent 0px, transparent 200px, rgba(0,0,0,0.5) 200px, rgba(0,0,0,0.5) 202px);
+            transform: rotateX(-90deg) translateZ(-1000px);
+            transform-origin: center;
+            box-shadow: inset 0 0 500px rgba(0,0,0,0.9);
+        }
+
+        /* Duvarlar - Gerçek 3D derinlik için */
+        .wall {
+            position: absolute;
+            background: 
+                linear-gradient(180deg, #0a0a0a 0%, #1a1a1a 30%, #1a1a1a 70%, #0a0a0a 100%),
+                repeating-linear-gradient(90deg, transparent 0px, transparent 198px, rgba(0,0,0,0.4) 198px, rgba(0,0,0,0.4) 200px);
+            transform-style: preserve-3d;
+        }
+
+        .wall-left {
+            width: 4000px;
+            height: 2000px;
+            left: -2000px;
+            top: -1000px;
+            transform: rotateY(90deg) translateZ(-2000px);
+        }
+
+        .wall-right {
+            width: 4000px;
+            height: 2000px;
+            right: -2000px;
+            top: -1000px;
+            transform: rotateY(-90deg) translateZ(-2000px);
+        }
+
+        .wall-front {
+            width: 4000px;
+            height: 2000px;
+            left: -2000px;
+            top: -1000px;
+            transform: translateZ(-2000px);
+            background: 
+                linear-gradient(180deg, #050505 0%, #151515 50%, #050505 100%),
+                url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><rect fill="%23000" opacity="0.3" x="20" y="20" width="60" height="80"/></svg>');
+            background-size: 100% 100%, 200px 300px;
+        }
+
+        /* Kapı aralıkları */
+        .doorway {
+            position: absolute;
+            width: 300px;
+            height: 500px;
             background: #000;
-            position: relative;
-            overflow: hidden;
+            box-shadow: 0 0 50px rgba(0,0,0,0.9), inset 0 0 20px rgba(20,0,0,0.5);
+            border: 2px solid #1a1a1a;
         }
-        #canvas {
-            width: 100%;
-            height: 100%;
-            display: block;
-            filter: contrast(1.3) brightness(0.7) blur(0.3px);
-        }
-        #ui-overlay {
+
+        .doorway-left { left: 500px; top: 500px; transform: translateZ(-1990px); }
+        .doorway-right { right: 500px; top: 500px; transform: translateZ(-1990px); }
+
+        /* === EL FENERİ === */
+        #flashlight {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 20;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-        }
-        #stats-panel {
-            display: flex;
-            gap: 25px;
-            color: #8aff8a;
-            text-shadow: 0 0 8px #00ff00, 0 0 15px #00aa00;
-            font-size: 20px;
-            font-weight: bold;
-            background: #000000cc;
-            padding: 12px 24px;
-            border-radius: 4px;
-            align-self: flex-start;
-            backdrop-filter: blur(4px);
-            border: 1px solid #2aff2a60;
-            letter-spacing: 1px;
-        }
-        #warning-container {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 15px;
-        }
-        #warning {
-            color: #ff0000;
-            font-size: 32px;
-            font-weight: bold;
-            text-shadow: 0 0 30px #ff0000, 0 0 60px #ff0000;
-            background: #000000dd;
-            padding: 20px 40px;
-            border-radius: 60px;
-            border: 3px solid #ff0000;
-            letter-spacing: 8px;
-            animation: pulse 0.4s infinite;
-            transform: scale(1);
-            backdrop-filter: blur(8px);
-        }
-        @keyframes pulse {
-            0% { opacity: 0.3; transform: scale(1); text-shadow: 0 0 20px red; }
-            50% { opacity: 1; transform: scale(1.1); text-shadow: 0 0 50px red, 0 0 100px red; }
-            100% { opacity: 0.3; transform: scale(1); text-shadow: 0 0 20px red; }
-        }
-        #microphone-panel {
-            display: flex;
-            gap: 15px;
-            align-items: center;
-            background: #000000ee;
-            padding: 12px 25px;
-            border-radius: 50px;
-            border: 2px solid #ff6600;
-            color: #ffaa00;
-            font-weight: bold;
-            font-size: 20px;
-            align-self: flex-end;
-            box-shadow: 0 0 20px #ff6600;
-            backdrop-filter: blur(4px);
-        }
-        #mic-led {
-            width: 20px;
-            height: 20px;
+            width: 600px;
+            height: 600px;
             border-radius: 50%;
-            background: #ff6600;
-            box-shadow: 0 0 15px #ffaa00;
-            transition: all 0.1s;
+            background: radial-gradient(circle at 30% 30%, 
+                rgba(255,255,240,0.9) 0%, 
+                rgba(255,255,200,0.4) 20%, 
+                rgba(255,200,100,0.1) 50%, 
+                transparent 70%);
+            pointer-events: none;
+            mix-blend-mode: screen;
+            filter: blur(1px);
+            transform: translate(-50%, -50%);
+            z-index: 100;
+            transition: opacity 0.2s;
         }
-        #mic-led.active {
-            background: #ff2200;
-            box-shadow: 0 0 30px #ff0000;
-            animation: mic-blink 0.2s infinite;
-        }
-        @keyframes mic-blink {
-            0% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(1.2); background: #ffaa00; }
-            100% { opacity: 1; transform: scale(1); }
-        }
-        #control-bar {
-            display: flex;
-            gap: 12px;
-            align-items: center;
-            background: #000000ee;
-            padding: 18px 25px;
-            border-radius: 8px;
-            border: 1px solid #666;
-            pointer-events: auto;
-            flex-wrap: wrap;
-            backdrop-filter: blur(8px);
-            border-top: 2px solid #333;
-        }
-        .game-btn {
-            background: #1f1f1f;
-            border: 2px solid #555;
-            color: #eee;
-            font-family: 'Courier New', monospace;
-            font-size: 20px;
-            font-weight: bold;
-            padding: 12px 25px;
-            cursor: pointer;
-            border-radius: 6px;
-            transition: 0.08s;
-            box-shadow: 0 4px 0 #0a0a0a;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-        }
-        .game-btn:hover {
-            background: #3a3a3a;
-            border-color: #ff3300;
-            color: white;
-            transform: translateY(-2px);
-            box-shadow: 0 6px 0 #550000;
-        }
-        .game-btn.danger {
-            border-color: #aa2222;
-            color: #ffaaaa;
-            background: #2a0a0a;
-        }
-        .game-btn.danger:hover {
-            background: #4a1a1a;
-            border-color: #ff4444;
-        }
-        #volume-container {
-            flex: 1;
-            min-width: 250px;
-            background: #111;
-            border: 2px solid #333;
-            padding: 4px;
-            border-radius: 30px;
-            overflow: hidden;
-        }
-        #volume-level {
-            height: 32px;
-            width: 0%;
-            background: linear-gradient(90deg, #00aa00, #ffff00, #ff0000, #aa0000);
-            border-radius: 30px;
-            transition: width 0.05s;
-            box-shadow: 0 0 10px #ffaa00;
-        }
-        #location-badge {
-            color: #aaa;
-            font-size: 18px;
-            border-left: 3px solid #ff6600;
-            padding-left: 15px;
-            margin-left: 10px;
-            text-transform: uppercase;
-            letter-spacing: 3px;
-        }
-        .hidden {
-            display: none !important;
-        }
-        #jumpscare-layer {
+
+        #flashlight::after {
+            content: '';
             position: absolute;
-            top: 0;
-            left: 0;
+            inset: -100px;
+            background: radial-gradient(circle, transparent 30%, rgba(0,0,0,0.95) 70%);
+            border-radius: 50%;
+        }
+
+        /* === YARATIK === */
+        #monster {
+            position: absolute;
+            width: 200px;
+            height: 400px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%) translateZ(-1000px);
+            transform-style: preserve-3d;
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            z-index: 50;
+        }
+
+        .monster-body {
             width: 100%;
             height: 100%;
-            background: #fff;
-            z-index: 100;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 180px;
-            color: #8b0000;
-            text-shadow: 0 0 80px white;
-            animation: jumpscare-flash 0.15s infinite;
-            pointer-events: none;
-            mix-blend-mode: hard-light;
+            background: 
+                radial-gradient(ellipse at 50% 20%, #2a0000 0%, #000 70%),
+                linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.8) 100%);
+            clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+            filter: blur(2px);
+            position: relative;
         }
-        @keyframes jumpscare-flash {
-            0% { background: white; color: black; filter: brightness(2); }
-            25% { background: red; color: yellow; }
-            50% { background: black; color: red; filter: brightness(3); }
-            75% { background: #8b0000; color: white; }
-            100% { background: white; color: black; }
-        }
-        #death-message {
+
+        .monster-eyes {
             position: absolute;
-            bottom: 150px;
+            top: 15%;
             left: 50%;
             transform: translateX(-50%);
-            color: #ff0000;
-            font-size: 48px;
-            font-weight: bold;
-            text-shadow: 0 0 40px black, 0 0 80px red;
-            background: #000000ee;
-            padding: 30px 60px;
-            border: 4px solid #8b0000;
-            z-index: 200;
-            white-space: nowrap;
-            letter-spacing: 8px;
-            animation: death-pulse 1s infinite;
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
+            width: 120px;
+            height: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        @keyframes death-pulse {
-            0% { border-color: #330000; box-shadow: 0 0 30px red; }
-            50% { border-color: #ff0000; box-shadow: 0 0 100px red; }
-            100% { border-color: #330000; box-shadow: 0 0 30px red; }
+
+        .eye {
+            width: 40px;
+            height: 15px;
+            background: #ff0000;
+            border-radius: 50%;
+            box-shadow: 0 0 30px #ff0000, 0 0 60px #ff0000;
+            animation: eyeFlicker 3s infinite;
+        }
+
+        @keyframes eyeFlicker {
+            0%, 100% { opacity: 0.3; transform: scaleY(0.3); }
+            50% { opacity: 1; transform: scaleY(1); }
+            52% { opacity: 0.1; }
+            54% { opacity: 1; }
+        }
+
+        /* Yaratık mesafe durumları */
+        #monster.far { transform: translate(-50%, -50%) translateZ(-2000px) scale(0.5); opacity: 0.3; filter: blur(5px); }
+        #monster.medium { transform: translate(-50%, -50%) translateZ(-1000px) scale(1); opacity: 0.7; filter: blur(2px); }
+        #monster.close { transform: translate(-50%, -50%) translateZ(-500px) scale(1.5); opacity: 0.9; filter: blur(1px); }
+        #monster.attacking { 
+            transform: translate(-50%, -50%) translateZ(200px) scale(3); 
+            opacity: 1; 
+            filter: blur(0);
+            animation: attackShake 0.1s infinite;
+        }
+
+        @keyframes attackShake {
+            0%, 100% { transform: translate(-50%, -50%) translateZ(200px) scale(3) rotate(-2deg); }
+            50% { transform: translate(-50%, -50%) translateZ(200px) scale(3) rotate(2deg); }
+        }
+
+        /* === UI ELEMENTLERİ === */
+        #hud {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 200;
+        }
+
+        #heart-rate {
+            position: absolute;
+            bottom: 50px;
+            left: 50px;
+            font-size: 24px;
+            color: #ff4444;
+            text-shadow: 0 0 10px #ff0000;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        #heart-rate.danger {
+            animation: heartbeat 0.5s infinite;
+            opacity: 1;
+        }
+
+        @keyframes heartbeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+
+        #sound-meter {
+            position: absolute;
+            bottom: 50px;
+            right: 50px;
+            width: 300px;
+            height: 20px;
+            background: rgba(0,0,0,0.8);
+            border: 2px solid #333;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        #sound-level {
+            height: 100%;
+            width: 0%;
+            background: linear-gradient(90deg, #00ff00 0%, #ffff00 50%, #ff0000 100%);
+            transition: width 0.1s;
+        }
+
+        #sound-label {
+            position: absolute;
+            top: -30px;
+            right: 0;
+            font-size: 14px;
+            color: #888;
+        }
+
+        /* === START SCREEN === */
+        #start-screen {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 1s;
+        }
+
+        #start-screen h1 {
+            font-size: 72px;
+            letter-spacing: 20px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 20px rgba(255,0,0,0.5);
+            animation: titleFlicker 4s infinite;
+        }
+
+        @keyframes titleFlicker {
+            0%, 90%, 100% { opacity: 1; }
+            95% { opacity: 0.3; }
+        }
+
+        #start-btn {
+            padding: 20px 60px;
+            font-size: 24px;
+            background: transparent;
+            border: 2px solid #fff;
+            color: #fff;
+            cursor: pointer;
+            font-family: inherit;
+            letter-spacing: 5px;
+            transition: all 0.3s;
+            margin-top: 40px;
+        }
+
+        #start-btn:hover {
+            background: #fff;
+            color: #000;
+            box-shadow: 0 0 30px rgba(255,255,255,0.5);
+        }
+
+        #warning {
+            margin-top: 30px;
+            color: #666;
+            font-size: 14px;
+            max-width: 500px;
+            text-align: center;
+            line-height: 1.6;
+        }
+
+        /* === JUMPSCARE OVERLAY === */
+        #jumpscare {
+            position: fixed;
+            inset: 0;
+            background: #000;
+            z-index: 9999;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        #jumpscare.active {
+            display: flex;
+            animation: jumpscareFlash 0.5s;
+        }
+
+        @keyframes jumpscareFlash {
+            0% { background: #fff; }
+            10% { background: #ff0000; }
+            20% { background: #000; }
+            30% { background: #ff0000; }
+            100% { background: #000; }
+        }
+
+        #jumpscare-face {
+            width: 80vw;
+            height: 80vh;
+            background: 
+                radial-gradient(circle at 30% 30%, #ff0000 0%, #000 50%),
+                repeating-conic-gradient(from 0deg at 50% 50%, #000 0deg 10deg, #330000 10deg 20deg);
+            clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+            animation: faceDistort 0.2s infinite;
+        }
+
+        @keyframes faceDistort {
+            0%, 100% { transform: scale(1) rotate(0deg); filter: blur(0); }
+            50% { transform: scale(1.1) rotate(2deg); filter: blur(2px); }
+        }
+
+        /* === GÖLGE EFEKTİ === */
+        .shadow-warning {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 200px;
+            background: linear-gradient(to top, rgba(0,0,0,0.9), transparent);
+            opacity: 0;
+            transition: opacity 1s;
+            pointer-events: none;
+            z-index: 90;
+        }
+
+        .shadow-warning.active {
+            opacity: 1;
+        }
+
+        /* === NOISE OVERLAY === */
+        #noise {
+            position: fixed;
+            inset: 0;
+            opacity: 0.05;
+            pointer-events: none;
+            z-index: 150;
+            background-image: url('data:image/svg+xml,<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(%23noise)"/></svg>');
         }
     </style>
 </head>
 <body>
-<div id="game-container" class="crt">
-    <div id="game-screen">
-        <canvas id="canvas" width="1200" height="700"></canvas>
-        <div id="ui-overlay">
-            <div style="display: flex; justify-content: space-between;">
-                <div id="stats-panel">
-                    <span>💀 KORKU: <span id="fear-value">0</span>%</span>
-                    <span>👁️ MESAFE: <span id="distance-value">0</span>m</span>
-                    <span>🕯️ 02:47</span>
-                </div>
-                <div id="microphone-panel">
-                    <span id="mic-led"></span>
-                    <span id="mic-status">MIKROFON KAPALI</span>
-                </div>
-            </div>
-            
-            <div id="warning-container">
-                <div id="warning" class="hidden">⚠️ DUYAN SENİ DİNLİYOR ⚠️</div>
-                <div id="death-message" class="hidden">💀 SENİ DUYDU 💀</div>
-            </div>
+    <!-- START SCREEN -->
+    <div id="start-screen">
+        <h1>SESSİZLİK</h1>
+        <p style="color: #666; letter-spacing: 5px;">SESİNİZ SİZİN DÜŞMANINIZDIR</p>
+        <button id="start-btn">BAŞLA</button>
+        <div id="warning">
+            🎧 Kulaklık takmanız şiddetle tavsiye edilir<br>
+            🎤 Mikrofon erişimi gereklidir<br>
+            📱 Telefonunuzu sessize alın<br>
+            ⚠️ Yüksek ses çıkarmak ölümünüz olabilir
+        </div>
+    </div>
 
-            <div id="control-bar">
-                <button class="game-btn" id="micToggle">🎤 MİKROFON AÇ</button>
-                <button class="game-btn" id="whisperBtn">🤫 FISILDA (W)</button>
-                <button class="game-btn" id="talkBtn">🗣️ KONUŞ (E)</button>
-                <button class="game-btn danger" id="shoutBtn">📢 BAĞIR (R)</button>
-                <div id="volume-container">
-                    <div id="volume-level"></div>
+    <!-- JUMPSCARE -->
+    <div id="jumpscare">
+        <div id="jumpscare-face"></div>
+        <div style="margin-top: 40px; font-size: 48px; letter-spacing: 10px; color: #ff0000;">ÖLDÜN</div>
+        <button onclick="location.reload()" style="margin-top: 40px; padding: 15px 40px; font-size: 18px; background: #ff0000; border: none; color: #fff; cursor: pointer; font-family: inherit;">TEKRAR DENE</button>
+    </div>
+
+    <!-- OYUN -->
+    <div id="viewport" style="display: none;">
+        <div id="noise"></div>
+        <div class="shadow-warning" id="shadow-warning"></div>
+        
+        <div id="camera">
+            <div class="room">
+                <div class="ceiling"></div>
+                <div class="floor"></div>
+                <div class="wall wall-left"></div>
+                <div class="wall wall-right"></div>
+                <div class="wall wall-front"></div>
+                <div class="doorway doorway-left"></div>
+                <div class="doorway doorway-right"></div>
+                
+                <div id="monster">
+                    <div class="monster-body">
+                        <div class="monster-eyes">
+                            <div class="eye"></div>
+                            <div class="eye"></div>
+                        </div>
+                    </div>
                 </div>
-                <span id="location-badge">🏚️ BODRUM KAT</span>
+            </div>
+        </div>
+
+        <div id="flashlight"></div>
+
+        <div id="hud">
+            <div id="heart-rate">♥ <span id="bpm">60</span> BPM</div>
+            <div id="sound-meter">
+                <div id="sound-label">SES SEVİYESİ</div>
+                <div id="sound-level"></div>
             </div>
         </div>
     </div>
-</div>
 
-<!-- Jumpscare katmanı -->
-<div id="jumpscare-layer" class="hidden">👹</div>
+    <script>
+        // === OYUN DURUMU ===
+        const State = {
+            distance: 2000,      // Yaratık mesafesi (px/Z)
+            awareness: 0,        // Yaratık farkındalığı (0-100)
+            isAlive: true,
+            isPlaying: false,
+            mouseX: 0,
+            mouseY: 0,
+            cameraRotX: 0,
+            cameraRotY: 0,
+            lastSoundLevel: 0,
+            soundHistory: [],    // Ortalama almak için
+            heartRate: 60
+        };
 
-<script>
-    (function() {
-        // Canvas
-        const canvas = document.getElementById('canvas');
-        const ctx = canvas.getContext('2d');
-        
-        // UI elementleri
-        const fearSpan = document.getElementById('fear-value');
-        const distanceSpan = document.getElementById('distance-value');
-        const warningDiv = document.getElementById('warning');
-        const deathMsg = document.getElementById('death-message');
-        const micLed = document.getElementById('mic-led');
-        const micStatus = document.getElementById('mic-status');
-        const volumeLevel = document.getElementById('volume-level');
-        const jumpscareLayer = document.getElementById('jumpscare-layer');
-        
-        // Butonlar
-        const micToggle = document.getElementById('micToggle');
-        const whisperBtn = document.getElementById('whisperBtn');
-        const talkBtn = document.getElementById('talkBtn');
-        const shoutBtn = document.getElementById('shoutBtn');
+        // === DOM ELEMENTLERİ ===
+        const els = {
+            startScreen: document.getElementById('start-screen'),
+            viewport: document.getElementById('viewport'),
+            camera: document.getElementById('camera'),
+            monster: document.getElementById('monster'),
+            flashlight: document.getElementById('flashlight'),
+            soundLevel: document.getElementById('sound-level'),
+            soundLabel: document.getElementById('sound-label'),
+            heartRate: document.getElementById('heart-rate'),
+            bpm: document.getElementById('bpm'),
+            jumpscare: document.getElementById('jumpscare'),
+            shadowWarning: document.getElementById('shadow-warning')
+        };
 
-        // ========== SES SİSTEMİ ==========
-        const AudioContext = window.AudioContext || window.webkitAudioContext;
-        let audioCtx = null;
-        
-        // Ses dosyaları (Base64 ile üretilmiş kısa sesler - pratikte sunucudan yüklenir)
-        function createNoiseBuffer(duration = 0.2, type = 'brown') {
-            if (!audioCtx) return null;
-            const frameCount = audioCtx.sampleRate * duration;
-            const myArray = new Float32Array(frameCount);
-            for (let i = 0; i < frameCount; i++) {
-                if (type === 'white') myArray[i] = Math.random() * 2 - 1;
-                else if (type === 'brown') {
-                    let last = i>0 ? myArray[i-1] : 0;
-                    myArray[i] = (last + (Math.random() * 2 - 1) * 0.02) / 1.02;
-                } else {
-                    myArray[i] = Math.sin(i * 0.02) * Math.exp(-i/1000);
-                }
-            }
-            const buffer = audioCtx.createBuffer(1, frameCount, audioCtx.sampleRate);
-            buffer.copyToChannel(myArray, 0);
-            return buffer;
-        }
+        // === SES ANALİZİ ===
+        let audioContext, analyser, microphone, dataArray;
 
-        function playSound(type, volume = 0.3) {
-            if (!audioCtx) return;
-            const buffer = createNoiseBuffer(0.3, type);
-            if (!buffer) return;
-            const source = audioCtx.createBufferSource();
-            source.buffer = buffer;
-            const gainNode = audioCtx.createGain();
-            gainNode.gain.value = volume;
-            source.connect(gainNode).connect(audioCtx.destination);
-            source.start();
-        }
-
-        // ========== OYUN DEĞİŞKENLERİ ==========
-        let fear = 0;                // 0-100
-        let distance = 70;           // Duyan uzaklığı (0 yakın, 100 uzak)
-        let playerNoise = 0;          // anlık ses 0-100
-        let micActive = false;
-        let gameOver = false;
-        
-        // Tablo düşme olayları
-        let pictureFallTimer = 0;
-        let pictureFallen = false;
-
-        // Mikrofon
-        let mediaStream = null;
-        let analyser = null;
-        let javascriptNode = null;
-
-        // Zaman
-        let lastNoiseTime = performance.now();
-
-        // ========== MİKROFON ==========
-        async function toggleMicrophone() {
-            if (micActive) {
-                if (mediaStream) mediaStream.getTracks().forEach(t => t.stop());
-                if (audioCtx) await audioCtx.close();
-                audioCtx = null;
-                micActive = false;
-                micLed.className = '';
-                micStatus.innerText = 'MIKROFON KAPALI';
-                micToggle.innerText = '🎤 MİKROFON AÇ';
-                return;
-            }
+        async function initAudio() {
             try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                audioCtx = new AudioContext();
-                analyser = audioCtx.createAnalyser();
-                const source = audioCtx.createMediaStreamSource(mediaStream);
-                source.connect(analyser);
-                javascriptNode = audioCtx.createScriptProcessor(512, 1, 1);
-                analyser.connect(javascriptNode);
-                javascriptNode.connect(audioCtx.destination);
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                 
-                analyser.fftSize = 256;
-                const dataArray = new Uint8Array(analyser.frequencyBinCount);
+                microphone = audioContext.createMediaStreamSource(stream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048;
+                analyser.smoothingTimeConstant = 0.8;
                 
-                javascriptNode.onaudioprocess = function() {
-                    if (!micActive || gameOver) return;
-                    analyser.getByteFrequencyData(dataArray);
-                    let sum = 0;
-                    for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-                    let avg = sum / dataArray.length; // 0-255
-                    let volume = (avg / 255) * 100;
-                    
-                    playerNoise = volume;
-                    
-                    if (volume > 8) {
-                        let influence = (volume / 100) * 0.5;
-                        distance = Math.max(0, distance - influence * 18);
-                        lastNoiseTime = performance.now();
-                        
-                        // Yüksek ses + yakınlık = ani jumpscare
-                        if (volume > 70 && distance < 30) {
-                            triggerJumpscare();
-                        }
-                    }
-                    
-                    volumeLevel.style.width = volume + '%';
-                };
+                microphone.connect(analyser);
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
                 
-                micActive = true;
-                micLed.className = 'active';
-                micStatus.innerText = 'DİNLENİYOR...';
-                micToggle.innerText = '🎤 MİKROFON KAPAT';
-                
+                console.log('🎤 Mikrofon aktif');
             } catch (err) {
-                alert('Mikrofon hatası: ' + err.message);
+                alert('Mikrofon erişimi reddedildi! Oyun oynanamaz.');
+                console.error(err);
             }
         }
 
-        // ========== MANUEL SES ==========
-        function makeNoise(level) {
-            if (gameOver) return;
-            playerNoise = level;
-            volumeLevel.style.width = level + '%';
+        function getSoundLevel() {
+            if (!analyser) return 0;
             
-            let reduction = level / 3.5; // max 28 birim yaklaşma
-            distance = Math.max(0, distance - reduction);
-            lastNoiseTime = performance.now();
+            analyser.getByteFrequencyData(dataArray);
             
-            // Ses efektini oynat
-            if (audioCtx) {
-                if (level < 25) playSound('whisper', 0.1);
-                else if (level < 60) playSound('talk', 0.3);
-                else playSound('shout', 0.6);
+            // RMS (Root Mean Square) hesaplama - daha doğru ses seviyesi
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                sum += dataArray[i] * dataArray[i];
             }
+            const rms = Math.sqrt(sum / dataArray.length);
             
-            // Çok yakınsa ve bağırırsa
-            if (level > 70 && distance < 25) {
-                triggerJumpscare();
-            }
+            // Normalize (0-100)
+            return Math.min(100, (rms / 128) * 100);
         }
 
-        // ========== JUMPSCARE ==========
-        function triggerJumpscare() {
-            if (gameOver) return;
-            gameOver = true;
-            jumpscareLayer.classList.remove('hidden');
-            deathMsg.classList.remove('hidden');
+        // === OYUN DÖNGÜSÜ ===
+        function gameLoop() {
+            if (!State.isAlive || !State.isPlaying) return;
+
+            // 1. Ses analizi (son 10 frame'in ortalaması)
+            const instantLevel = getSoundLevel();
+            State.soundHistory.push(instantLevel);
+            if (State.soundHistory.length > 10) State.soundHistory.shift();
             
-            // Korkunç ses
-            if (audioCtx) {
-                playSound('scream', 0.8);
-                // Düşen tablo sesi
-                setTimeout(() => playSound('fall', 0.5), 100);
-            }
-            
-            setTimeout(() => {
-                resetGame();
-            }, 2500);
+            const avgLevel = State.soundHistory.reduce((a, b) => a + b, 0) / State.soundHistory.length;
+            State.lastSoundLevel = avgLevel;
+
+            // 2. UI Güncelle
+            updateUI(avgLevel);
+
+            // 3. Yaratık AI
+            updateMonster(avgLevel);
+
+            // 4. Kalp atışı
+            updateHeartRate();
+
+            requestAnimationFrame(gameLoop);
         }
 
-        function resetGame() {
-            gameOver = false;
-            distance = 70;
-            fear = 0;
-            playerNoise = 0;
-            pictureFallen = false;
-            pictureFallTimer = 0;
-            jumpscareLayer.classList.add('hidden');
-            deathMsg.classList.add('hidden');
-            warningDiv.classList.add('hidden');
-            volumeLevel.style.width = '0%';
-        }
+        function updateUI(level) {
+            // Ses barı
+            els.soundLevel.style.width = level + '%';
+            
+            // Ses etiketi
+            let label = 'SESSIZ';
+            let color = '#00ff00';
+            if (level > 10) { label = 'FISILTI'; color = '#88ff00'; }
+            if (level > 25) { label = 'NORMAL'; color = '#ffff00'; }
+            if (level > 50) { label = 'BAGIRMA'; color = '#ff8800'; }
+            if (level > 75) { label = 'CIGLIK!'; color = '#ff0000'; }
+            
+            els.soundLabel.textContent = label;
+            els.soundLabel.style.color = color;
 
-        // ========== OYUN DÖNGÜSÜ ==========
-        function update() {
-            if (gameOver) {
-                requestAnimationFrame(update);
-                return;
-            }
-
-            let now = performance.now();
-            let delta = Math.min(0.1, (now - lastNoiseTime) / 1000);
-            
-            // Sessizlikte Duyan uzaklaşır
-            if (now - lastNoiseTime > 2000) {
-                distance = Math.min(100, distance + delta * 8);
-            }
-            
-            // Korku = ters orantılı mesafe
-            fear = Math.min(100, Math.max(0, 100 - distance));
-            
-            // Uyarı
-            if (distance < 40) {
-                warningDiv.classList.remove('hidden');
+            // Kalp atışı gösterimi
+            if (State.distance < 1000) {
+                els.heartRate.classList.add('danger');
+                State.heartRate = 60 + Math.floor((1000 - State.distance) / 5);
             } else {
-                warningDiv.classList.add('hidden');
+                els.heartRate.classList.remove('danger');
+                State.heartRate = 60;
             }
-            
-            // Ölüm kontrolü
-            if (distance < 8) {
-                triggerJumpscare();
-            }
-            
-            // Tablo düşürme mekaniği (rastgele)
-            if (!pictureFallen && Math.random() < 0.002) { // her frame'de düşme şansı
-                pictureFallen = true;
-                if (audioCtx) playSound('fall', 0.5);
-                // Görsel efek: tablo düşmesi canvas'ta çizilecek
-            }
-            if (pictureFallen) {
-                pictureFallTimer += delta;
-                if (pictureFallTimer > 5) { // 5 saniye sonra tablo yerine konur
-                    pictureFallen = false;
-                    pictureFallTimer = 0;
-                }
-            }
-            
-            // UI
-            fearSpan.innerText = Math.floor(fear);
-            distanceSpan.innerText = Math.floor(distance);
-            
-            requestAnimationFrame(update);
+            els.bpm.textContent = State.heartRate;
         }
 
-        // ========== ÇİZİM ==========
-        function draw() {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Karanlık oda zemini
-            ctx.fillStyle = '#0f0f0a';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            
-            // Duvarlar (loş)
-            ctx.fillStyle = '#2a2a1e';
-            ctx.fillRect(0, 0, canvas.width, 100); // tavan
-            ctx.fillRect(0, canvas.height-100, canvas.width, 100); // taban
-            ctx.fillRect(0, 0, 100, canvas.height); // sol duvar
-            ctx.fillRect(canvas.width-100, 0, 100, canvas.height); // sağ duvar
-            
-            // Pencere (ay ışığı)
-            ctx.fillStyle = '#556b2f30';
-            ctx.fillRect(500, 80, 200, 150);
-            ctx.fillStyle = '#ffffaa10';
-            ctx.fillRect(505, 85, 190, 140);
-            
-            // Tablo (eğer düşmediyse)
-            if (!pictureFallen) {
-                ctx.fillStyle = '#8b5a2b';
-                ctx.fillRect(300, 200, 80, 100);
-                ctx.fillStyle = '#cd853f';
-                ctx.font = '24px "Courier New"';
-                ctx.fillText('🌲', 320, 260);
+        function updateMonster(soundLevel) {
+            // Ses seviyesine göre yaratık davranışı
+            let moveSpeed = 0;
+            let detectionRate = 0;
+
+            if (soundLevel < 10) {
+                // Sessizlik: Yaratık uzaklaşır/gezinir
+                moveSpeed = -2;
+                detectionRate = -0.5;
+            } else if (soundLevel < 25) {
+                // Fısıltı: Çok yavaş yaklaşır, meraklanır
+                moveSpeed = 0.5;
+                detectionRate = 0.2;
+            } else if (soundLevel < 50) {
+                // Normal: Yavaş yaklaşır
+                moveSpeed = 3;
+                detectionRate = 1;
+            } else if (soundLevel < 75) {
+                // Bağırma: Hızlı yaklaşır
+                moveSpeed = 8;
+                detectionRate = 3;
             } else {
-                // Düşmüş tablo yerde
-                ctx.fillStyle = '#5a3a1a';
-                ctx.beginPath();
-                ctx.moveTo(280, 450);
-                ctx.lineTo(400, 470);
-                ctx.lineTo(380, 540);
-                ctx.lineTo(260, 520);
-                ctx.closePath();
-                ctx.fill();
-                ctx.fillStyle = '#aa5522';
-                ctx.font = '20px monospace';
-                ctx.fillText('💀', 310, 490);
+                // Çığlık: Koşar
+                moveSpeed = 20;
+                detectionRate = 5;
             }
-            
-            // Eski sandalye
-            ctx.fillStyle = '#4d3e2b';
-            ctx.fillRect(700, 450, 60, 80);
-            ctx.fillRect(690, 430, 80, 20);
-            
-            // Duyan'ın gölgesi (yaklaştıkça belirgin)
-            if (distance < 60) {
-                let alpha = 1 - (distance / 80);
-                ctx.shadowColor = '#8b0000';
-                ctx.shadowBlur = 40 + (60 - distance) * 3;
-                ctx.fillStyle = `rgba(70, 0, 0, ${alpha*0.7})`;
-                ctx.beginPath();
-                ctx.ellipse(900, 300 + (60-distance)*2, 50 + (60-distance), 30 + (60-distance), 0, 0, 2*Math.PI);
-                ctx.fill();
-                ctx.shadowBlur = 0;
+
+            // Farkındalık birikimi (threshold geçince hareket eder)
+            State.awareness += detectionRate;
+            State.awareness = Math.max(0, Math.min(100, State.awareness));
+
+            // Farkındalık yeterliyse hareket et
+            if (State.awareness > 20) {
+                State.distance -= moveSpeed;
+            } else {
+                // Farkındalık yoksa rastgele gezin
+                State.distance += (Math.random() - 0.5) * 2;
             }
-            
-            // Kan lekeleri (detay)
-            ctx.fillStyle = '#4a000030';
-            ctx.beginPath();
-            ctx.arc(200, 600, 40, 0, 2*Math.PI);
-            ctx.fill();
-            
-            // Fener ışığı efekti (fareyle)
-            ctx.fillStyle = '#ffffaa05';
-            ctx.fillRect(0,0,canvas.width, canvas.height);
-            
-            // Korku etkisi
-            if (fear > 50) {
-                ctx.fillStyle = '#330000';
-                ctx.globalAlpha = (fear - 50) / 100 * 0.6;
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.globalAlpha = 1;
-            }
-            
-            requestAnimationFrame(draw);
+
+            // Sınırlar
+            State.distance = Math.max(100, Math.min(3000, State.distance));
+
+            // Görsel güncelleme
+            updateMonsterVisual();
+            checkDeath();
         }
 
-        // ========== OLAY DİNLEYİCİLER ==========
-        micToggle.addEventListener('click', toggleMicrophone);
-        whisperBtn.addEventListener('click', () => makeNoise(15));
-        talkBtn.addEventListener('click', () => makeNoise(40));
-        shoutBtn.addEventListener('click', () => makeNoise(85));
-        
-        window.addEventListener('keydown', (e) => {
-            if (e.key === 'w' || e.key === 'W') makeNoise(15);
-            if (e.key === 'e' || e.key === 'E') makeNoise(40);
-            if (e.key === 'r' || e.key === 'R') makeNoise(85);
+        function updateMonsterVisual() {
+            const m = els.monster;
+            
+            // Mesafe durumları
+            m.className = '';
+            
+            if (State.distance > 1500) {
+                m.classList.add('far');
+                els.shadowWarning.classList.remove('active');
+            } else if (State.distance > 800) {
+                m.classList.add('medium');
+                els.shadowWarning.classList.remove('active');
+            } else if (State.distance > 300) {
+                m.classList.add('close');
+                els.shadowWarning.classList.add('active');
+            } else {
+                m.classList.add('attacking');
+                els.shadowWarning.classList.add('active');
+            }
+
+            // Gölge uyarısı opaklığı
+            if (State.distance < 1000) {
+                const intensity = 1 - (State.distance / 1000);
+                els.shadowWarning.style.opacity = intensity;
+            }
+        }
+
+        function checkDeath() {
+            if (State.distance <= 100 && State.lastSoundLevel > 5) {
+                triggerDeath();
+            }
+        }
+
+        function triggerDeath() {
+            State.isAlive = false;
+            els.jumpscare.classList.add('active');
+            
+            // Kamera titreme efekti
+            els.camera.style.animation = 'attackShake 0.5s';
+        }
+
+        function updateHeartRate() {
+            // Görsel efekt için gerekli
+        }
+
+        // === KONTROLLER ===
+        document.addEventListener('mousemove', (e) => {
+            if (!State.isPlaying) return;
+            
+            State.mouseX = (e.clientX / window.innerWidth - 0.5) * 2;
+            State.mouseY = (e.clientY / window.innerHeight - 0.5) * 2;
+
+            // Kamera rotasyonu (sınırlı)
+            State.cameraRotY = State.mouseX * 30; // Yaw
+            State.cameraRotX = -State.mouseY * 20; // Pitch
+
+            els.camera.style.transform = `rotateX(${State.cameraRotX}deg) rotateY(${State.cameraRotY}deg)`;
+            
+            // El feneri pozisyonu
+            els.flashlight.style.left = e.clientX + 'px';
+            els.flashlight.style.top = e.clientY + 'px';
         });
 
-        // BAŞLAT
-        audioCtx = new AudioContext(); // Safari için kullanıcı etkileşimi gerekebilir
-        update();
-        draw();
-        resetGame();
-    })();
-</script>
+        // Başlat
+        document.getElementById('start-btn').addEventListener('click', async () => {
+            await initAudio();
+            
+            els.startScreen.style.opacity = '0';
+            setTimeout(() => {
+                els.startScreen.style.display = 'none';
+                els.viewport.style.display = 'block';
+                State.isPlaying = true;
+                gameLoop();
+            }, 1000);
+        });
+
+        // Klavye hareket (WASD)
+        document.addEventListener('keydown', (e) => {
+            if (!State.isPlaying) return;
+            
+            // İleri-geri hareket simülasyonu (Z ekseni)
+            switch(e.key.toLowerCase()) {
+                case 'w':
+                    State.distance -= 50; // İleri git = yaratığa yaklaş
+                    break;
+                case 's':
+                    State.distance += 50; // Geri git = uzaklaş
+                    break;
+            }
+            State.distance = Math.max(100, Math.min(3000, State.distance));
+        });
+    </script>
 </body>
 </html>
