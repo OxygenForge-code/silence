@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SESSİZLİK - Ses Kontrollü Korku</title>
     <script>
-        // MOBİL DEDEKTÖR - Sayfa yüklenmeden yönlendir
         const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) 
             || (window.matchMedia && window.matchMedia("(max-width: 768px)").matches)
             || ('ontouchstart' in window && navigator.maxTouchPoints > 0);
@@ -115,7 +114,291 @@
             transform: rotateY(-90deg) translateZ(-1000px);
         }
 
-        /* === DETAYLAR === */
+        /* === AVİZE (YANIP SÖNEN) === */
+        .chandelier {
+            position: absolute;
+            width: 150px;
+            height: 200px;
+            left: 50%;
+            top: -200px;
+            transform: translateX(-50%) translateZ(0) rotateX(-90deg);
+            transform-origin: top center;
+            transform-style: preserve-3d;
+        }
+
+        .chandelier-chain {
+            position: absolute;
+            width: 4px;
+            height: 100px;
+            left: 50%;
+            top: 0;
+            transform: translateX(-50%);
+            background: linear-gradient(180deg, #333 0%, #111 100%);
+        }
+
+        .chandelier-body {
+            position: absolute;
+            width: 150px;
+            height: 100px;
+            top: 100px;
+            left: 0;
+            background: 
+                radial-gradient(circle at 50% 30%, #443322 0%, #221100 50%, #000 100%);
+            clip-path: polygon(20% 0%, 80% 0%, 100% 100%, 0% 100%);
+            box-shadow: 0 0 100px rgba(255,200,100,0.3);
+        }
+
+        .chandelier-light {
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            left: 50%;
+            top: 150px;
+            transform: translateX(-50%) rotateX(90deg);
+            background: radial-gradient(circle, 
+                rgba(255,220,150,0.8) 0%, 
+                rgba(255,200,100,0.3) 30%, 
+                transparent 60%);
+            opacity: var(--light-intensity, 0.3);
+            transition: opacity 0.05s;
+            pointer-events: none;
+            mix-blend-mode: screen;
+        }
+
+        /* Yanıp sönme animasyonu - JS kontrollü */
+        .chandelier.flickering .chandelier-light {
+            animation: flicker 0.1s infinite;
+        }
+
+        @keyframes flicker {
+            0%, 100% { opacity: 0.1; }
+            50% { opacity: 0.6; }
+            25% { opacity: 0.05; }
+            75% { opacity: 0.4; }
+        }
+
+        .chandelier.dying .chandelier-light {
+            animation: dyingLight 2s forwards;
+        }
+
+        @keyframes dyingLight {
+            0% { opacity: 0.5; }
+            20% { opacity: 0.1; }
+            40% { opacity: 0.6; }
+            60% { opacity: 0.05; }
+            80% { opacity: 0.3; }
+            100% { opacity: 0; }
+        }
+
+        /* === TABLO (DÜŞEBİLEN) === */
+        .painting {
+            position: absolute;
+            width: 200px;
+            height: 280px;
+            left: 50%;
+            top: 150px;
+            margin-left: -100px;
+            transform: translateZ(-995px);
+            transform-origin: top center;
+            transition: transform 0.3s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            transform-style: preserve-3d;
+        }
+
+        .painting-frame {
+            position: absolute;
+            inset: 0;
+            background: #3a2a1a;
+            border: 8px solid #2a1a0a;
+            box-shadow: 
+                0 10px 30px rgba(0,0,0,0.8),
+                inset 0 0 20px rgba(0,0,0,0.5);
+        }
+
+        .painting-canvas {
+            position: absolute;
+            inset: 15px;
+            background: 
+                linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f0f23 100%);
+            overflow: hidden;
+        }
+
+        /* Gizemli figür silueti */
+        .painting-canvas::after {
+            content: '';
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 120px;
+            background: #000;
+            clip-path: polygon(40% 0%, 60% 0%, 70% 30%, 80% 100%, 20% 100%, 30% 30%);
+            opacity: 0.7;
+        }
+
+        .painting-hanging {
+            position: absolute;
+            width: 2px;
+            height: 50px;
+            background: #444;
+            left: 50%;
+            top: -50px;
+            transform: translateX(-50%);
+        }
+
+        /* Düşme durumları */
+        .painting.tilted {
+            transform: translateZ(-995px) rotateZ(15deg);
+        }
+
+        .painting.falling {
+            animation: paintingFall 1s forwards;
+        }
+
+        @keyframes paintingFall {
+            0% { transform: translateZ(-995px) rotateZ(15deg); }
+            30% { transform: translateZ(-995px) rotateZ(-5deg) translateY(20px); }
+            60% { transform: translateZ(-995px) rotateZ(10deg) translateY(100px); }
+            100% { 
+                transform: translateZ(-995px) rotateZ(85deg) translateY(400px); 
+                opacity: 0;
+            }
+        }
+
+        /* Düştükten sonra yerde */
+        .painting-fallen {
+            position: absolute;
+            width: 200px;
+            height: 280px;
+            left: 50%;
+            top: 600px;
+            margin-left: -100px;
+            transform: translateZ(-900px) rotateX(90deg) rotateZ(20deg);
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        .painting-fallen.visible {
+            opacity: 0.6;
+        }
+
+        /* === YERE DÜŞEN EŞYALAR === */
+        .falling-object {
+            position: absolute;
+            transform-style: preserve-3d;
+            opacity: 0;
+            transition: all 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+        }
+
+        .falling-object.falling {
+            animation: objectFall 1.5s forwards;
+            opacity: 1;
+        }
+
+        @keyframes objectFall {
+            0% { 
+                transform: translateY(-500px) rotateZ(0deg); 
+                opacity: 1;
+            }
+            50% {
+                transform: translateY(0px) rotateZ(180deg);
+            }
+            70% {
+                transform: translateY(20px) rotateZ(200deg);
+            }
+            100% { 
+                transform: translateY(0) rotateZ(190deg); 
+                opacity: 1;
+            }
+        }
+
+        /* Şişe */
+        .bottle {
+            width: 30px;
+            height: 80px;
+            left: 300px;
+            top: 400px;
+            transform: translateZ(-800px);
+        }
+
+        .bottle-body {
+            position: absolute;
+            width: 30px;
+            height: 50px;
+            bottom: 0;
+            background: linear-gradient(90deg, #2a4a3a 0%, #4a6a5a 50%, #2a4a3a 100%);
+            border-radius: 0 0 5px 5px;
+        }
+
+        .bottle-neck {
+            position: absolute;
+            width: 12px;
+            height: 30px;
+            top: 0;
+            left: 9px;
+            background: linear-gradient(90deg, #3a5a4a 0%, #5a7a6a 50%, #3a5a4a 100%);
+        }
+
+        /* Kitap yığını */
+        .book-stack {
+            width: 100px;
+            height: 60px;
+            right: 400px;
+            top: 500px;
+            transform: translateZ(-700px);
+        }
+
+        .book {
+            position: absolute;
+            width: 100px;
+            height: 15px;
+            background: #4a3a2a;
+            border: 1px solid #3a2a1a;
+        }
+
+        .book:nth-child(1) { top: 0; transform: rotateZ(2deg); background: #5a4a3a; }
+        .book:nth-child(2) { top: 15px; transform: rotateZ(-1deg); background: #4a3a2a; }
+        .book:nth-child(3) { top: 30px; transform: rotateZ(3deg); background: #3a2a1a; }
+        .book:nth-child(4) { top: 45px; transform: rotateZ(-2deg); background: #5a4a3a; }
+
+        /* Lamba */
+        .table-lamp {
+            width: 60px;
+            height: 100px;
+            left: -200px;
+            top: 300px;
+            transform: translateZ(-600px);
+        }
+
+        .lamp-base {
+            position: absolute;
+            width: 40px;
+            height: 10px;
+            bottom: 0;
+            left: 10px;
+            background: #3a3a3a;
+            border-radius: 50%;
+        }
+
+        .lamp-stand {
+            position: absolute;
+            width: 6px;
+            height: 60px;
+            bottom: 10px;
+            left: 27px;
+            background: linear-gradient(90deg, #222 0%, #444 50%, #222 100%);
+        }
+
+        .lamp-shade {
+            position: absolute;
+            width: 60px;
+            height: 40px;
+            top: 0;
+            background: linear-gradient(180deg, #4a4a4a 0%, #2a2a2a 100%);
+            clip-path: polygon(20% 100%, 80% 100%, 100% 0%, 0% 0%);
+        }
+
+        /* === DİĞER DETAYLAR === */
         .window {
             position: absolute;
             width: 300px;
@@ -208,7 +491,7 @@
             position: absolute;
             width: 100px;
             height: 120px;
-            background: #2a1a1a;
+            background: #2a1a2a;
             transform: translateZ(-50px);
         }
 
@@ -537,6 +820,7 @@
     <div id="world" style="display: none;">
         <div id="camera">
             <div class="room">
+                <!-- Yapı -->
                 <div class="face floor"></div>
                 <div class="face ceiling"></div>
                 <div class="face wall-front">
@@ -550,6 +834,49 @@
                     <div class="door door-right"></div>
                 </div>
 
+                <!-- AVİZE (Yanıp Sönen) -->
+                <div class="chandelier" id="chandelier">
+                    <div class="chandelier-hanging"></div>
+                    <div class="chandelier-chain"></div>
+                    <div class="chandelier-body"></div>
+                    <div class="chandelier-light"></div>
+                </div>
+
+                <!-- TABLO (Düşebilen) -->
+                <div class="painting" id="painting">
+                    <div class="painting-hanging"></div>
+                    <div class="painting-frame">
+                        <div class="painting-canvas"></div>
+                    </div>
+                </div>
+
+                <!-- Düşmüş tablo (yerde) -->
+                <div class="painting-fallen" id="painting-fallen">
+                    <div class="painting-frame">
+                        <div class="painting-canvas"></div>
+                    </div>
+                </div>
+
+                <!-- YERE DÜŞEN EŞYALAR -->
+                <div class="falling-object bottle" id="bottle">
+                    <div class="bottle-neck"></div>
+                    <div class="bottle-body"></div>
+                </div>
+
+                <div class="falling-object book-stack" id="books">
+                    <div class="book"></div>
+                    <div class="book"></div>
+                    <div class="book"></div>
+                    <div class="book"></div>
+                </div>
+
+                <div class="falling-object table-lamp" id="lamp">
+                    <div class="lamp-shade"></div>
+                    <div class="lamp-stand"></div>
+                    <div class="lamp-base"></div>
+                </div>
+
+                <!-- Mobilya -->
                 <div class="furniture table">
                     <div class="table-top"></div>
                     <div class="table-leg leg-1"></div>
@@ -565,6 +892,7 @@
 
                 <div class="blood blood-1"></div>
 
+                <!-- Yaratık -->
                 <div id="monster">
                     <div class="monster-mesh">
                         <div class="monster-eyes">
@@ -596,6 +924,7 @@
     </div>
 
     <script>
+        // === OYUN DURUMU ===
         const Game = {
             state: {
                 isPlaying: false,
@@ -606,7 +935,14 @@
                 pos: { z: 0 },
                 keys: {},
                 heartRate: 60,
-                soundAvg: 0
+                soundAvg: 0,
+                // Yeni: Olay zamanlayıcıları
+                events: {
+                    chandelierFlicker: 0,
+                    paintingFall: 0,
+                    objectFall: 0,
+                    nextEvent: 5000 // İlk olay 5 saniye sonra
+                }
             },
             config: {
                 mouseSensitivity: 0.8,
@@ -616,6 +952,7 @@
             audio: { ctx: null, analyser: null, data: null }
         };
 
+        // === SES ===
         async function initAudio() {
             try {
                 Game.audio.ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -654,14 +991,120 @@
             return Math.min(100, (avg / 255) * 150);
         }
 
-        function gameLoop() {
+        // === OLAY YÖNETİCİSİ (Yeni) ===
+        function updateEvents(time) {
+            // Avize yanıp sönme
+            const chandelier = document.getElementById('chandelier');
+            const painting = document.getElementById('painting');
+            const paintingFallen = document.getElementById('painting-fallen');
+            
+            // Rastgele yanıp sönme (5-15 saniye arası)
+            if (time - Game.state.events.chandelierFlicker > 5000 + Math.random() * 10000) {
+                chandelier.classList.add('flickering');
+                
+                // 2-4 saniye yanıp sönsün
+                setTimeout(() => {
+                    chandelier.classList.remove('flickering');
+                    
+                    // %30 ihtimalle tamamen sönsün (ölüyor)
+                    if (Math.random() > 0.7) {
+                        chandelier.classList.add('dying');
+                        setTimeout(() => {
+                            chandelier.classList.remove('dying');
+                        }, 3000);
+                    }
+                }, 2000 + Math.random() * 2000);
+                
+                Game.state.events.chandelierFlicker = time;
+            }
+
+            // Tablo düşme (20-40 saniye arası, bir kere)
+            if (!Game.state.events.paintingFall && time > 20000 + Math.random() * 20000) {
+                // Önce sallan
+                painting.classList.add('tilted');
+                
+                setTimeout(() => {
+                    // Sonra düş
+                    painting.classList.remove('tilted');
+                    painting.classList.add('falling');
+                    
+                    // Yerdeki versiyonu göster
+                    setTimeout(() => {
+                        paintingFallen.classList.add('visible');
+                    }, 800);
+                    
+                    // Ses efekti
+                    playCrashSound();
+                }, 2000);
+                
+                Game.state.events.paintingFall = time;
+            }
+
+            // Eşya düşme (10-30 saniye arası, tekrarlanabilir)
+            if (time - Game.state.events.objectFall > 10000 + Math.random() * 20000) {
+                const objects = ['bottle', 'books', 'lamp'];
+                const obj = document.getElementById(objects[Math.floor(Math.random() * objects.length)]);
+                
+                // Eğer daha önce düşmediyse
+                if (!obj.classList.contains('fallen')) {
+                    obj.classList.add('falling');
+                    obj.classList.add('fallen');
+                    
+                    setTimeout(() => {
+                        playCrashSound();
+                    }, 1000);
+                    
+                    // 10 saniye sonra reset (opsiyonel)
+                    setTimeout(() => {
+                        obj.classList.remove('falling');
+                        obj.style.opacity = '0.6'; // Yerde duruyor
+                    }, 1500);
+                }
+                
+                Game.state.events.objectFall = time;
+            }
+        }
+
+        function playCrashSound() {
+            try {
+                if (!Game.audio.ctx) return;
+                const osc = Game.audio.ctx.createOscillator();
+                const gain = Game.audio.ctx.createGain();
+                const filter = Game.audio.ctx.createBiquadFilter();
+                
+                // Gürültü benzeri çarpma sesi
+                osc.type = 'sawtooth';
+                osc.frequency.setValueAtTime(100, Game.audio.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(20, Game.audio.ctx.currentTime + 0.3);
+                
+                filter.type = 'lowpass';
+                filter.frequency.setValueAtTime(1000, Game.audio.ctx.currentTime);
+                filter.frequency.exponentialRampToValueAtTime(100, Game.audio.ctx.currentTime + 0.3);
+                
+                gain.gain.setValueAtTime(0.3, Game.audio.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.01, Game.audio.ctx.currentTime + 0.3);
+                
+                osc.connect(filter);
+                filter.connect(gain);
+                gain.connect(Game.audio.ctx.destination);
+                
+                osc.start();
+                osc.stop(Game.audio.ctx.currentTime + 0.3);
+            } catch(e) {}
+        }
+
+        // === OYUN DÖNGÜSÜ ===
+        function gameLoop(time) {
             if (!Game.state.isPlaying || !Game.state.isAlive) return;
+
             const rawLevel = getSoundLevel();
             Game.state.soundAvg = Game.state.soundAvg * 0.9 + rawLevel * 0.1;
             
             updateMonster(Game.state.soundAvg);
             updateUI(Game.state.soundAvg);
             updateMovement();
+            updateEvents(time); // Yeni olaylar
+            
             requestAnimationFrame(gameLoop);
         }
 
@@ -745,6 +1188,7 @@
             } catch(e) {}
         }
 
+        // === EVENTLER ===
         document.addEventListener('mousemove', (e) => {
             if (!Game.state.isPlaying) return;
             Game.state.camera.x = (e.clientX / window.innerWidth - 0.5) * 2;
@@ -773,7 +1217,7 @@
                 document.getElementById('noise-overlay').style.display = 'block';
                 document.getElementById('ui').style.display = 'block';
                 Game.state.isPlaying = true;
-                gameLoop();
+                gameLoop(0);
             }, 1000);
         });
     </script>
